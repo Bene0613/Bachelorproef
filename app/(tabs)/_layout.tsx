@@ -1,35 +1,109 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { Tabs } from "expo-router";
+import { Text, View } from "react-native";
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+const GREEN = "#5CBC4F";
+const LIGHT_GREEN = "#DDF3D8";
+
+function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
+  return (
+    <View
+      style={{
+        width: focused ? 64 : 40,
+        height: focused ? 52 : 40,
+        borderRadius: 32,
+        backgroundColor: focused ? LIGHT_GREEN : "transparent",
+        alignItems: "center",
+        justifyContent: "center",
+        marginTop: focused ? -24 : 0,
+      }}
+    >
+      <Text style={{ fontSize: 24, color: GREEN }}>{icon}</Text>
+    </View>
+  );
+}
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarActiveTintColor: GREEN,
+        tabBarInactiveTintColor: GREEN,
+        tabBarStyle: {
+          height: 72,
+          backgroundColor: "#fff",
+          borderTopWidth: 0,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "600",
+        },
+      }}
+    >
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: "Huis",
+          tabBarIcon: ({ focused }) => <TabIcon icon="⌂" focused={focused} />,
         }}
       />
+
+      
       <Tabs.Screen
-        name="explore"
+        name="dashboard"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: "DB",
+          tabBarIcon: ({ focused }) => <TabIcon icon="▯" focused={focused} />,
         }}
       />
+
+      <Tabs.Screen
+        name="modules"
+        options={{
+          title: "Modules",
+          tabBarIcon: ({ focused }) => <TabIcon icon="▦" focused={focused} />,
+        }}
+      />
+
+      <Tabs.Screen
+        name="instellingen"
+        options={{
+          title: "Meer",
+          tabBarIcon: ({ focused }) => <TabIcon icon="⚙" focused={focused} />,
+        }}
+      />
+
+      <Tabs.Screen
+      name="module-preview"
+      options={{
+      href: null,
+      headerShown: false,
+       }}
+      />
+
+      <Tabs.Screen
+  name="create-module"
+  options={{
+    href: null,
+    headerShown: false,
+  }}
+/>
+
+<Tabs.Screen
+  name="questions"
+  options={{
+    href: null,
+    headerShown: false,
+  }}
+/>
+
+<Tabs.Screen
+  name="loading"
+  options={{
+    href: null,
+    headerShown: false,
+  }}
+/>
     </Tabs>
   );
 }
