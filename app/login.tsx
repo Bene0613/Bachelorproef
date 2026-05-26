@@ -1,21 +1,55 @@
 import { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
-
+import { supabase } from "../lib/supabase";
 export default function LoginScreen() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = () => {
-    if (!email || !password) {
-      alert("Vul alle velden in");
-      return;
+  const handleLogin = async () => {
+  if (!email || !password) {
+    alert("Vul alle velden in");
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw error;
     }
 
-     router.push("/home" as any);
-  };
+    const user = data.user;
+
+    if (!user) {
+      throw new Error("Geen gebruiker gevonden");
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError) {
+      throw profileError;
+    }
+
+    if (profile.role === "leerkracht") {
+      router.replace("/(teacher-tabs)/home");
+    } else {
+      router.replace("/(tabs)/home");
+    }
+  } catch (error) {
+    console.log("Login error:", error);
+    alert(String(error));
+  }
+};
 
   return (
     <View style={styles.screen}>

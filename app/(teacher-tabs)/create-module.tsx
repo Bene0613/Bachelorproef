@@ -46,7 +46,7 @@ export default function CreateModuleScreen() {
   const finalSubSubject =
     subSubject === "Anders" ? customSubSubject : subSubject;
 
- const handleNext = async () => {
+  const handleNext = async () => {
   if (!uploadId) {
     alert("Geen PDF gevonden. Ga terug en kies eerst een PDF.");
     return;

@@ -22,7 +22,7 @@ function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
   );
 }
 
-export default function TabLayout() {
+export default function TeacherTabsLayout() {
   return (
     <Tabs
       screenOptions={{
@@ -65,6 +65,14 @@ export default function TabLayout() {
         }}
       />
 
+        <Tabs.Screen
+  name="klassen"
+  options={{
+    title: "Klassen",
+    tabBarIcon: ({ focused }) => <TabIcon icon="◫" focused={focused} />,
+  }}
+/>
+
       <Tabs.Screen
         name="instellingen"
         options={{
@@ -103,6 +111,14 @@ export default function TabLayout() {
 
 <Tabs.Screen
   name="loading"
+  options={{
+    href: null,
+    headerShown: false,
+  }}
+/>
+
+<Tabs.Screen
+  name="student-modules"
   options={{
     href: null,
     headerShown: false,

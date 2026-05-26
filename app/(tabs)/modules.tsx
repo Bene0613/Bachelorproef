@@ -1,51 +1,154 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { useEffect, useState } from "react";
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
-const subjects = [
-  { letter: "W", name: "Wiskunde" },
-  { letter: "F", name: "Fysica" },
-  { letter: "C", name: "Chemie" },
-  { letter: "I", name: "Informatica" },
-  { letter: "E", name: "Electrica" },
-  { letter: "T", name: "Techniek" },
-];
+import PageHeader from "../../components/PageHeader";
+import SectionHeader from "../../components/SectionHeader";
+import { supabase } from "../../lib/supabase";
+
+const API_URL = "http://localhost:3000";
 
 export default function ModulesScreen() {
   const router = useRouter();
-  const [layout, setLayout] = useState<"grid" | "list">("grid");
-  const [hasModules, setHasModules] = useState(false);
 
-  const openSubject = (name: string) => {
-    if (name === "Wiskunde") {
-      router.push("/module-preview" as any);
+  const [layout, setLayout] = useState<"grid" | "list">("grid");
+  const [modules, setModules] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchModules();
+  }, []);
+
+const fetchModules = async () => {
+  try {
+    const { data: userData } =
+      await supabase.auth.getUser();
+
+    const user = userData.user;
+
+    if (!user) return;
+
+    console.log("USER ID:", user.id);
+
+    const { data: ownModules, error: ownError } =
+      await supabase
+        .from("modules")
+        .select("*")
+        .eq("created_by", user.id);
+
+    if (ownError) {
+      console.log(
+        "Own modules error:",
+        ownError
+      );
     }
-  };
+
+    const { data: classLink } = await supabase
+      .from("class_students")
+      .select("class_id")
+      .eq("student_id", user.id);
+
+    console.log("CLASS LINK:", classLink);
+
+    const classIds =
+      classLink?.map((item) => item.class_id) || [];
+
+    console.log("CLASS IDS:", classIds);
+
+    let teacherModules: any[] = [];
+
+    if (classIds.length > 0) {
+      const { data: moduleLinks } =
+        await supabase
+          .from("module_classes")
+          .select("module_id")
+          .in("class_id", classIds);
+
+      console.log(
+        "MODULE LINKS:",
+        moduleLinks
+      );
+
+      const moduleIds =
+        moduleLinks?.map(
+          (item) => item.module_id
+        ) || [];
+
+      if (moduleIds.length > 0) {
+        const {
+          data: fetchedTeacherModules,
+        } = await supabase
+          .from("modules")
+          .select("*")
+          .in("id", moduleIds);
+
+        teacherModules =
+          fetchedTeacherModules || [];
+      }
+    }
+
+    console.log(
+      "TEACHER MODULES:",
+      teacherModules
+    );
+
+    setModules([
+      ...(ownModules || []),
+      ...teacherModules,
+    ]);
+  } catch (err) {
+    console.log(err);
+  }
+};
+const deleteModule = async (moduleId: string) => {
+  try {
+    const res = await fetch(`${API_URL}/modules/${moduleId}`, {
+      method: "DELETE",
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "Module verwijderen mislukt");
+    }
+
+    setModules((prev) =>
+      prev.filter((item) => item.id !== moduleId)
+    );
+
+    alert("Module verwijderd");
+  } catch (error) {
+    console.log("Delete module error:", error);
+    alert(String(error));
+  }
+};
+
+const hasModules = modules.length > 0;
+
+const uniqueModules = [
+  ...new Map(modules.map((m) => [m.subject, m])).values(),
+];
 
   return (
     <View style={styles.screen}>
-      <LinearGradient colors={["#EAF6E5", "#FFF9FC"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
-      style={styles.header}
-    >
-  <Text style={styles.title}>Modules</Text>
-</LinearGradient>
+      <PageHeader title="Modules" />
 
-<View style={styles.greenLine} />
+      <SectionHeader title="Mijn modules" />
 
-      <LinearGradient
-  colors={["#EAF6E5", "#FFF9FC"]}
-  start={{ x: 0, y: 0 }}
-  end={{ x: 0, y: 1 }}
-  style={styles.searchArea}
->
-  <View style={styles.searchBox}>
-    <TextInput placeholder="Text input" style={styles.input} />
-    <Text style={styles.searchIcon}>⌕</Text>
-  </View>
-</LinearGradient>
+      <View style={styles.searchBox}>
+        <TextInput
+          placeholder="Zoeken"
+          placeholderTextColor="#999"
+          style={styles.input}
+        />
+        <Text style={styles.searchIcon}>⌕</Text>
+      </View>
 
       {!hasModules ? (
         <View style={styles.emptyContent}>
@@ -59,48 +162,85 @@ export default function ModulesScreen() {
           <Text style={styles.emptyText}>
             Ga naar Home om een PDF te uploaden en je eerste module te maken
           </Text>
-
-          <Pressable onPress={() => setHasModules(true)}>
-            <Text style={styles.refresh}>↻</Text>
-          </Pressable>
         </View>
       ) : (
         <>
           <View style={styles.filterRow}>
             <Text style={styles.filterText}>Filters⌃</Text>
 
-            <Pressable onPress={() => setLayout(layout === "grid" ? "list" : "grid")}>
-              <Text style={styles.layoutButton}>{layout === "grid" ? "☷" : "▦"}</Text>
+            <Pressable
+              onPress={() =>
+                setLayout(layout === "grid" ? "list" : "grid")
+              }
+            >
+              <Text style={styles.layoutButton}>
+                {layout === "grid" ? "☷" : "▦"}
+              </Text>
             </Pressable>
           </View>
 
           {layout === "grid" ? (
             <View style={styles.grid}>
-              {subjects.map((item) => (
-                <Pressable
-                  key={item.name}
-                  style={styles.gridCard}
-                  onPress={() => openSubject(item.name)}
-                >
-                  <SubjectIcon letter={item.letter} grid />
-                  <Text style={styles.subjectName}>{item.name}</Text>
-                </Pressable>
+              {uniqueModules.map((item) => (
+                <View key={item.id} style={styles.gridCard}>
+                  <Pressable
+                    style={styles.deleteButton}
+                    onPress={() => deleteModule(item.id)}
+                  >
+                    <Text style={styles.deleteButtonText}>🗑</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={styles.gridCardContent}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/module-preview",
+                        params: { subject: item.subject },
+                      } as any)
+                    }
+                  >
+                    <SubjectIcon letter={item.subject?.[0] || "?"} grid />
+
+                    <Text style={styles.subjectName}>{item.subject}</Text>
+
+                    <Text style={styles.subSubjectName}>
+                      {item.sub_subject}
+                    </Text>
+                  </Pressable>
+                </View>
               ))}
             </View>
           ) : (
             <View style={styles.list}>
-              {subjects.slice(0, 5).map((item) => (
-                <Pressable
-                  key={item.name}
-                  style={[
-                    styles.listCard,
-                    item.name === "Wiskunde" && styles.activeListCard,
-                  ]}
-                  onPress={() => openSubject(item.name)}
-                >
-                  <SubjectIcon letter={item.letter} />
-                  <Text style={styles.listName}>{item.name}</Text>
-                </Pressable>
+              {uniqueModules.map((item) => (
+                <View key={item.id} style={styles.listCard}>
+                  <Pressable
+                    style={styles.listContent}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/module-preview",
+                        params: { subject: item.subject },
+                      } as any)
+                    }
+                  >
+                    <SubjectIcon letter={item.subject?.[0] || "?"} />
+
+                    <View>
+                      <Text style={styles.listName}>{item.subject}</Text>
+
+                      <Text style={styles.subSubjectName}>
+                        {item.sub_subject}
+                      </Text>
+                    </View>
+                  </Pressable>
+
+                  <Pressable
+                    style={styles.listDeleteButton}
+                    onPress={() => deleteModule(item.id)}
+                  >
+                    <Text style={styles.deleteButtonText}>🗑</Text>
+                  </Pressable>
+                </View>
               ))}
             </View>
           )}
@@ -110,10 +250,16 @@ export default function ModulesScreen() {
   );
 }
 
-function SubjectIcon({ letter, grid }: { letter: string; grid?: boolean }) {
+function SubjectIcon({
+  letter,
+  grid,
+}: {
+  letter: string;
+  grid?: boolean;
+}) {
   return (
     <View style={[styles.subjectIcon, grid && styles.subjectIconGrid]}>
-      <Text style={styles.subjectLetter}>{letter}</Text>
+      <Text style={styles.subjectLetter}>{letter.toUpperCase()}</Text>
     </View>
   );
 }
@@ -122,46 +268,22 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#FFF9FC",
-    paddingTop: 28,
-    paddingHorizontal: 26,
   },
-  header: {
-  height: 100,
-  justifyContent: "flex-end",
-  alignItems: "center",
-  paddingBottom: 12,
-},
-greenLine: {
-  height: 3,
-  backgroundColor: "#6BCB59",
-  marginHorizontal: -26,
-  marginBottom: 0,
-},
-  title: {
-    textAlign: "center",
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#777",
-    marginBottom: 0,
-  },
-searchArea: {
-  marginHorizontal: -26,
-  paddingHorizontal: 26,
-  paddingVertical: 20,
-  marginTop: 0,
-  marginBottom: 8,
-},
+
   searchBox: {
     height: 44,
     backgroundColor: "#fff",
     borderRadius: 8,
     paddingHorizontal: 16,
     justifyContent: "center",
-    marginBottom: 28,
+    marginHorizontal: 26,
+    marginBottom: 22,
   },
+
   input: {
     fontSize: 13,
   },
+
   searchIcon: {
     position: "absolute",
     right: 14,
@@ -173,19 +295,23 @@ searchArea: {
   emptyContent: {
     alignItems: "center",
     marginTop: 42,
+    paddingHorizontal: 26,
   },
+
   emptyImage: {
     width: 190,
     height: 160,
     resizeMode: "contain",
     marginBottom: 28,
   },
+
   emptyTitle: {
     fontSize: 14,
     fontWeight: "600",
     color: "#555",
     marginBottom: 10,
   },
+
   emptyText: {
     width: 230,
     textAlign: "center",
@@ -193,41 +319,50 @@ searchArea: {
     color: "#555",
     lineHeight: 19,
   },
-  refresh: {
-    fontSize: 22,
-    marginTop: 18,
-    color: "#333",
-  },
 
   filterRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 10,
+    paddingHorizontal: 26,
   },
+
   filterText: {
     fontSize: 13,
   },
+
   layoutButton: {
     fontSize: 18,
     color: "#777",
   },
+
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
+    paddingHorizontal: 26,
   },
+
   gridCard: {
     width: "46%",
-    height: 110,
+    height: 120,
     backgroundColor: "#fff",
     borderRadius: 12,
+    marginBottom: 24,
+    position: "relative",
+  },
+
+  gridCardContent: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 24,
   },
+
   list: {
     gap: 18,
+    paddingHorizontal: 26,
   },
+
   listCard: {
     height: 64,
     backgroundColor: "#fff",
@@ -235,11 +370,15 @@ searchArea: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 14,
+    justifyContent: "space-between",
   },
-  activeListCard: {
-    borderWidth: 1.5,
-    borderColor: "#5CBC4F",
+
+  listContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
   },
+
   subjectIcon: {
     width: 52,
     height: 52,
@@ -251,20 +390,46 @@ searchArea: {
     justifyContent: "center",
     marginRight: 18,
   },
+
   subjectIconGrid: {
     marginRight: 0,
   },
+
   subjectLetter: {
     color: "#fff",
     fontSize: 28,
   },
+
   subjectName: {
     marginTop: 10,
     fontSize: 15,
     color: "#444",
   },
+
   listName: {
     fontSize: 16,
     color: "#555",
+  },
+
+  subSubjectName: {
+    fontSize: 11,
+    color: "#888",
+    marginTop: 2,
+  },
+
+  deleteButton: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    zIndex: 10,
+  },
+
+  listDeleteButton: {
+    padding: 8,
+  },
+
+  deleteButtonText: {
+    fontSize: 14,
+    color: "#E56D6D",
   },
 });

@@ -1,26 +1,31 @@
-import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+
+import PageHeader from "../components/PageHeader";
+import SectionHeader from "../components/SectionHeader";
 
 export default function Screen() {
   return (
     <View style={styles.screen}>
-      <LinearGradient colors={["#EAF6E5", "#FFF9FC"]} style={styles.header}>
-        <Text style={styles.title}>Instellingen</Text>
-        <Text style={styles.breadcrumb}>
-          Instellingen / <Text style={styles.green}>Wachtwoord wijzigen</Text>
-        </Text>
-        <View style={styles.line} />
-      </LinearGradient>
+      <PageHeader
+        title="Instellingen"
+        breadcrumbMain="Instellingen"
+        breadcrumbActive="Wachtwoord wijzigen"
+      />
 
-      <View style={styles.card}>
-        <Text style={styles.headerBox}>Wachtwoord wijzigen</Text>
+      <SectionHeader title="Wachtwoord wijzigen" />
 
+      <View style={styles.content}>
         <Text style={styles.small}>
-          Voer uw e-mailadres in, we sturen instructies...
+          Voer uw e-mailadres in, we sturen instructies om uw wachtwoord opnieuw in te stellen.
         </Text>
 
         <Text style={styles.label}>Schoolmail</Text>
-        <TextInput style={styles.input} placeholder="naam@schoolnaam.be" />
+
+        <TextInput
+          style={styles.input}
+          placeholder="naam@schoolnaam.be"
+          placeholderTextColor="#999"
+        />
 
         <Pressable style={styles.button}>
           <Text style={styles.buttonText}>Ga verder</Text>
@@ -31,84 +36,52 @@ export default function Screen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#FFF9FC" },
-
-  header: { paddingTop: 28 },
-
-  title: {
-    textAlign: "center",
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#777",
+  screen: {
+    flex: 1,
+    backgroundColor: "#FFF9FC",
   },
 
-  breadcrumb: {
-    textAlign: "center",
-    fontSize: 11,
-    color: "#555",
-    marginTop: 2,
-  },
-
-  green: { color: "#5CBC4F" },
-
-  line: {
-    height: 3,
-    backgroundColor: "#6BCB59",
-    marginTop: 6,
-  },
-
-  card: {
-    margin: 24,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 16,
-  },
-
-  headerBox: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 12,
-    textAlign: "center",
-  },
-
-  text: {
-    fontSize: 12,
-    color: "#555",
-    lineHeight: 18,
+  content: {
+    paddingHorizontal: 26,
+    paddingTop: 24,
   },
 
   small: {
-    fontSize: 11,
+    fontSize: 12,
     color: "#555",
-    marginBottom: 12,
+    lineHeight: 18,
+    marginBottom: 18,
   },
 
   label: {
-    fontSize: 11,
-    marginTop: 12,
-    marginBottom: 6,
+    fontSize: 12,
+    color: "#555",
+    marginBottom: 7,
   },
 
   input: {
-    height: 42,
+    height: 46,
+    backgroundColor: "#fff",
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    paddingHorizontal: 12,
+    borderColor: "#DDD",
+    paddingHorizontal: 14,
+    fontSize: 13,
+    color: "#333",
   },
 
   button: {
-    marginTop: 16,
+    marginTop: 20,
     backgroundColor: "#5CBC4F",
-    padding: 10,
-    borderRadius: 6,
+    height: 44,
+    borderRadius: 8,
+    justifyContent: "center",
     alignItems: "center",
   },
 
-  buttonText: { color: "#fff", fontWeight: "600" },
-
-  link: {
-    color: "#5CBC4F",
-    marginVertical: 10,
+  buttonText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "700",
   },
 });
