@@ -25,115 +25,96 @@ export default function ModulesScreen() {
     fetchModules();
   }, []);
 
-const fetchModules = async () => {
-  try {
-    const { data: userData } =
-      await supabase.auth.getUser();
+  const fetchModules = async () => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
 
-    const user = userData.user;
+      if (!user) return;
 
-    if (!user) return;
-
-    console.log("USER ID:", user.id);
-
-    const { data: ownModules, error: ownError } =
-      await supabase
+      const { data: ownModules, error: ownError } = await supabase
         .from("modules")
         .select("*")
         .eq("created_by", user.id);
 
-    if (ownError) {
-      console.log(
-        "Own modules error:",
-        ownError
-      );
-    }
+      if (ownError) {
+        console.log("Own modules error:", ownError);
+      }
 
-    const { data: classLink } = await supabase
-      .from("class_students")
-      .select("class_id")
-      .eq("student_id", user.id);
+      const { data: classLink } = await supabase
+        .from("class_students")
+        .select("class_id")
+        .eq("student_id", user.id);
 
-    console.log("CLASS LINK:", classLink);
+      const classIds = classLink?.map((item) => item.class_id) || [];
 
-    const classIds =
-      classLink?.map((item) => item.class_id) || [];
+      let teacherModules: any[] = [];
 
-    console.log("CLASS IDS:", classIds);
-
-    let teacherModules: any[] = [];
-
-    if (classIds.length > 0) {
-      const { data: moduleLinks } =
-        await supabase
+      if (classIds.length > 0) {
+        const { data: moduleLinks } = await supabase
           .from("module_classes")
           .select("module_id")
           .in("class_id", classIds);
 
-      console.log(
-        "MODULE LINKS:",
-        moduleLinks
-      );
+        const moduleIds = moduleLinks?.map((item) => item.module_id) || [];
 
-      const moduleIds =
-        moduleLinks?.map(
-          (item) => item.module_id
-        ) || [];
+        if (moduleIds.length > 0) {
+          const res = await fetch(`${API_URL}/modules/by-ids`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              ids: moduleIds,
+            }),
+          });
 
-      if (moduleIds.length > 0) {
-        const {
-          data: fetchedTeacherModules,
-        } = await supabase
-          .from("modules")
-          .select("*")
-          .in("id", moduleIds);
-
-        teacherModules =
-          fetchedTeacherModules || [];
+          const fetchedTeacherModules = await res.json();
+          teacherModules = fetchedTeacherModules || [];
+        }
       }
+
+      const ownModulesWithSource = (ownModules || []).map((module) => ({
+        ...module,
+        source: "student",
+      }));
+
+      const teacherModulesWithSource = teacherModules.map((module) => ({
+        ...module,
+        source: "teacher",
+      }));
+
+      setModules([...teacherModulesWithSource, ...ownModulesWithSource]);
+    } catch (err) {
+      console.log(err);
     }
+  };
 
-    console.log(
-      "TEACHER MODULES:",
-      teacherModules
-    );
+  const deleteModule = async (moduleId: string) => {
+    try {
+      const res = await fetch(`${API_URL}/modules/${moduleId}`, {
+        method: "DELETE",
+      });
 
-    setModules([
-      ...(ownModules || []),
-      ...teacherModules,
-    ]);
-  } catch (err) {
-    console.log(err);
-  }
-};
-const deleteModule = async (moduleId: string) => {
-  try {
-    const res = await fetch(`${API_URL}/modules/${moduleId}`, {
-      method: "DELETE",
-    });
+      const data = await res.json();
 
-    const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Module verwijderen mislukt");
+      }
 
-    if (!res.ok) {
-      throw new Error(data.error || "Module verwijderen mislukt");
+      setModules((prev) => prev.filter((item) => item.id !== moduleId));
+
+      alert("Module verwijderd");
+    } catch (error) {
+      console.log("Delete module error:", error);
+      alert(String(error));
     }
+  };
 
-    setModules((prev) =>
-      prev.filter((item) => item.id !== moduleId)
-    );
+  const hasModules = modules.length > 0;
 
-    alert("Module verwijderd");
-  } catch (error) {
-    console.log("Delete module error:", error);
-    alert(String(error));
-  }
-};
-
-const hasModules = modules.length > 0;
-
-const uniqueModules = [
-  ...new Map(modules.map((m) => [m.subject, m])).values(),
-];
+  const teacherModules = modules.filter((item) => item.source === "teacher");
+  const studentModules = modules.filter((item) => item.source === "student");
 
   return (
     <View style={styles.screen}>
@@ -169,9 +150,7 @@ const uniqueModules = [
             <Text style={styles.filterText}>Filters⌃</Text>
 
             <Pressable
-              onPress={() =>
-                setLayout(layout === "grid" ? "list" : "grid")
-              }
+              onPress={() => setLayout(layout === "grid" ? "list" : "grid")}
             >
               <Text style={styles.layoutButton}>
                 {layout === "grid" ? "☷" : "▦"}
@@ -179,72 +158,196 @@ const uniqueModules = [
             </Pressable>
           </View>
 
-          {layout === "grid" ? (
-            <View style={styles.grid}>
-              {uniqueModules.map((item) => (
-                <View key={item.id} style={styles.gridCard}>
-                  <Pressable
-                    style={styles.deleteButton}
-                    onPress={() => deleteModule(item.id)}
-                  >
-                    <Text style={styles.deleteButtonText}>🗑</Text>
-                  </Pressable>
+          <ModuleSection
+            title="Modules van je leerkrachten"
+            modules={teacherModules}
+            layout={layout}
+            router={router}
+            deleteModule={deleteModule}
+          />
 
-                  <Pressable
-                    style={styles.gridCardContent}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/module-preview",
-                        params: { subject: item.subject },
-                      } as any)
-                    }
-                  >
-                    <SubjectIcon letter={item.subject?.[0] || "?"} grid />
-
-                    <Text style={styles.subjectName}>{item.subject}</Text>
-
-                    <Text style={styles.subSubjectName}>
-                      {item.sub_subject}
-                    </Text>
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.list}>
-              {uniqueModules.map((item) => (
-                <View key={item.id} style={styles.listCard}>
-                  <Pressable
-                    style={styles.listContent}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/module-preview",
-                        params: { subject: item.subject },
-                      } as any)
-                    }
-                  >
-                    <SubjectIcon letter={item.subject?.[0] || "?"} />
-
-                    <View>
-                      <Text style={styles.listName}>{item.subject}</Text>
-
-                      <Text style={styles.subSubjectName}>
-                        {item.sub_subject}
-                      </Text>
-                    </View>
-                  </Pressable>
-
-                  <Pressable
-                    style={styles.listDeleteButton}
-                    onPress={() => deleteModule(item.id)}
-                  >
-                    <Text style={styles.deleteButtonText}>🗑</Text>
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          )}
+          <ModuleSection
+            title="Jouw modules"
+            modules={studentModules}
+            layout={layout}
+            router={router}
+            deleteModule={deleteModule}
+          />
         </>
+      )}
+    </View>
+  );
+} 
+function ModuleSection({
+  title,
+  modules,
+  layout,
+  router,
+  deleteModule,
+}: {
+  title: string;
+  modules: any[];
+  layout: "grid" | "list";
+  router: any;
+  deleteModule: (id: string) => void;
+}) {
+  return (
+    <View style={styles.sectionBlock}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+
+      {layout === "grid" ? (
+        <View style={styles.grid}>
+          {modules.map((item) => (
+            <View
+              key={item.id}
+              style={[
+                styles.gridCard,
+                item.source === "teacher" &&
+                  styles.teacherCard,
+              ]}
+            >
+              {item.source === "teacher" && (
+                <View style={styles.teacherBadge}>
+                  <Text
+                    style={styles.teacherBadgeText}
+                  >
+                    LEERKRACHT
+                  </Text>
+                </View>
+              )}
+
+              {item.source === "student" && (
+                <Pressable
+                  style={styles.deleteButton}
+                  onPress={() =>
+                    deleteModule(item.id)
+                  }
+                >
+                  <Text
+                    style={
+                      styles.deleteButtonText
+                    }
+                  >
+                    🗑
+                  </Text>
+                </Pressable>
+              )}
+
+              <Pressable
+                style={styles.gridCardContent}
+                onPress={() =>
+                  router.push({
+                    pathname:
+                      "/module-preview",
+                    params: {
+                      subject: item.subject,
+                    },
+                  } as any)
+                }
+              >
+                <SubjectIcon
+                  letter={
+                    item.subject?.[0] || "?"
+                  }
+                  grid
+                />
+
+                <Text
+                  style={styles.subjectName}
+                >
+                  {item.subject}
+                </Text>
+
+                <Text
+                  style={
+                    styles.subSubjectName
+                  }
+                >
+                  {item.sub_subject}
+                </Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.list}>
+          {modules.map((item) => (
+            <View
+              key={item.id}
+              style={[
+                styles.listCard,
+                item.source === "teacher" &&
+                  styles.teacherCard,
+              ]}
+            >
+              <Pressable
+                style={styles.listContent}
+                onPress={() =>
+                  router.push({
+                    pathname:
+                      "/module-preview",
+                    params: {
+                      subject: item.subject,
+                    },
+                  } as any)
+                }
+              >
+                <SubjectIcon
+                  letter={
+                    item.subject?.[0] || "?"
+                  }
+                />
+
+                <View>
+                  <Text
+                    style={styles.listName}
+                  >
+                    {item.subject}
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.subSubjectName
+                    }
+                  >
+                    {item.sub_subject}
+                  </Text>
+
+                  {item.source ===
+                    "teacher" && (
+                    <Text
+                      style={
+                        styles.teacherSmallText
+                      }
+                    >
+                      Module van leerkracht
+                    </Text>
+                  )}
+                </View>
+              </Pressable>
+
+              {item.source ===
+                "student" && (
+                <Pressable
+                  style={
+                    styles.listDeleteButton
+                  }
+                  onPress={() =>
+                    deleteModule(item.id)
+                  }
+                >
+                  <Text
+                    style={
+                      styles.deleteButtonText
+                    }
+                  >
+                    🗑
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          ))}
+        </View>
       )}
     </View>
   );
@@ -432,4 +535,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#E56D6D",
   },
+  sectionBlock: {
+  marginBottom: 22,
+},
+
+sectionTitle: {
+  fontSize: 15,
+  fontWeight: "700",
+  color: "#555",
+  marginHorizontal: 26,
+  marginBottom: 12,
+},
+
+teacherCard: {
+  borderWidth: 1.5,
+  borderColor: "#5CBC4F",
+},
+
+teacherBadge: {
+  position: "absolute",
+  top: 8,
+  right: 8,
+  backgroundColor: "#EAF6E5",
+  borderRadius: 6,
+  paddingHorizontal: 6,
+  paddingVertical: 3,
+  zIndex: 10,
+},
+
+teacherBadgeText: {
+  fontSize: 8,
+  color: "#5CBC4F",
+  fontWeight: "700",
+},
+
+teacherSmallText: {
+  fontSize: 10,
+  color: "#5CBC4F",
+  marginTop: 2,
+},
 });

@@ -99,7 +99,7 @@ export default function CreateModuleScreen() {
       }),
     });
 
-    const moduleData = await response.json();
+const moduleData = await response.json();
 
     if (!response.ok) {
       throw new Error(moduleData.error || "Module opslaan mislukt");

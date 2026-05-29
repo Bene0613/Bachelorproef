@@ -57,27 +57,50 @@ app.post("/upload", upload.single("file"), async (req, res) => {
 });
 
 app.post("/modules", async (req, res) => {
-  
+  try {
+    const {
+      subject,
+      sub_subject,
+      user_id,
+      created_by,
+      owner_role,
+      visibility,
+    } = req.body;
 
-  const { data, error } = await supabase
-    .from("modules")
-    .insert([
-  {
-    subject,
-    sub_subject,
-    user_id,
-    created_by,
-    owner_role,
-    visibility,
-  },
-])
-    .select();
+    if (!subject || !sub_subject || !user_id) {
+      return res.status(400).json({
+        error: "subject, sub_subject en user_id zijn verplicht",
+      });
+    }
 
-  if (error) {
-    return res.status(500).json({ error: error.message });
+    const { data, error } = await supabase
+      .from("modules")
+      .insert([
+        {
+          subject,
+          sub_subject,
+          user_id,
+          created_by: created_by || user_id,
+          owner_role: owner_role || "leerling",
+          visibility: visibility || "private",
+        },
+      ])
+      .select();
+
+    if (error) {
+      return res.status(500).json({
+        error: error.message,
+      });
+    }
+
+    res.json(data[0]);
+  } catch (error) {
+    console.error("Create module error:", error);
+
+    res.status(500).json({
+      error: "Serverfout bij module aanmaken",
+    });
   }
-
-  res.json(data[0]);
 });
 
 app.get("/modules", async (req, res) => {
@@ -249,6 +272,25 @@ app.delete("/modules/:id", async (req, res) => {
   }
 
   res.json({ message: "Module verwijderd" });
+});
+
+app.post("/modules/by-ids", async (req, res) => {
+  const { ids } = req.body;
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.json([]);
+  }
+
+  const { data, error } = await supabase
+    .from("modules")
+    .select("*")
+    .in("id", ids);
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  res.json(data);
 });
 
 app.listen(PORT, () => {
