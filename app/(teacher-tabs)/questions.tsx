@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import ConfirmModal from "../../components/ConfirmModal";
-const API_URL = "http://localhost:3000";
+const API_URL = "https://bachelorproef-4946.onrender.com";
 
 export default function QuestionsScreen() {
   const router = useRouter();

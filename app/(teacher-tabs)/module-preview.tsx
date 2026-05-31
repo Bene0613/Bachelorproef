@@ -12,7 +12,7 @@ import {
 import PageHeader from "../../components/PageHeader";
 import SectionHeader from "../../components/SectionHeader";
 
-const API_URL = "http://localhost:3000";
+const API_URL = "https://bachelorproef-4946.onrender.com";
 
 export default function ModulePreviewScreen() {
   const router = useRouter();

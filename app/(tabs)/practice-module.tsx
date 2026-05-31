@@ -12,7 +12,7 @@ import {
 import PageHeader from "../../components/PageHeader";
 import { supabase } from "../../lib/supabase";
 
-const API_URL = "http://localhost:3000";
+const API_URL = "https://bachelorproef-4946.onrender.com";
 
 type AnswerResult = {
   question: string;

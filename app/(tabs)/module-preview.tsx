@@ -13,7 +13,7 @@ import PageHeader from "../../components/PageHeader";
 import SectionHeader from "../../components/SectionHeader";
 import { supabase } from "../../lib/supabase";
 
-const API_URL = "http://localhost:3000";
+const API_URL = "https://bachelorproef-4946.onrender.com";
 
 export default function ModulePreviewScreen() {
   const router = useRouter();
