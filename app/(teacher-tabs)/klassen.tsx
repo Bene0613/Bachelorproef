@@ -104,9 +104,24 @@ if (studentIds.length > 0) {
     setClasses(results);
   };
 
-  const filteredClasses = classes.filter((item) =>
-    item.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredClasses = classes
+  .map((classItem) => ({
+    ...classItem,
+    students: classItem.students.filter((student) =>
+      student.name.toLowerCase().includes(search.toLowerCase())
+    ),
+  }))
+  .filter((classItem) => {
+    const classMatches = classItem.name
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    const hasMatchingStudents = classItem.students.length > 0;
+
+    return search.trim()
+      ? classMatches || hasMatchingStudents
+      : true;
+  });
 
   const fifthYear = filteredClasses.filter((item) =>
     item.name.startsWith("5")
@@ -131,7 +146,7 @@ if (studentIds.length > 0) {
 
       <View style={styles.searchBox}>
         <TextInput
-          placeholder="Text input"
+          placeholder="Zoek leerling"
           placeholderTextColor="#999"
           value={search}
           onChangeText={setSearch}

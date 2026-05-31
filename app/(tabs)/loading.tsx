@@ -8,6 +8,10 @@ export default function LoadingScreen() {
   const params = useLocalSearchParams();
   const rotate = useRef(new Animated.Value(0)).current;
 
+  const next = Array.isArray(params.next) ? params.next[0] : params.next;
+
+  const text = Array.isArray(params.text) ? params.text[0] : params.text;
+
   useEffect(() => {
     Animated.loop(
       Animated.timing(rotate, {
@@ -18,12 +22,11 @@ export default function LoadingScreen() {
     ).start();
 
     const timer = setTimeout(() => {
-      const next = params.next as string;
       router.replace((next || "/modules") as any);
     }, 3000);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [next]);
 
   const spin = rotate.interpolate({
     inputRange: [0, 1],
@@ -50,7 +53,9 @@ export default function LoadingScreen() {
         />
       </View>
 
-      <Text style={styles.loadingText}>Bezig met opslaan...</Text>
+      <Text style={styles.loadingText}>
+        {text || "Even geduld..."}
+      </Text>
     </LinearGradient>
   );
 }
@@ -61,12 +66,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
   loaderBox: {
     width: 190,
     height: 190,
     justifyContent: "center",
     alignItems: "center",
   },
+
   ring: {
     width: 150,
     height: 150,
@@ -78,6 +85,7 @@ const styles = StyleSheet.create({
     borderLeftColor: "#D9D948",
     position: "absolute",
   },
+
   cutout: {
     position: "absolute",
     width: 78,
@@ -87,11 +95,13 @@ const styles = StyleSheet.create({
     top: 10,
     left: 10,
   },
+
   logo: {
     width: 36,
     height: 36,
     resizeMode: "contain",
   },
+
   loadingText: {
     marginTop: 18,
     fontSize: 13,

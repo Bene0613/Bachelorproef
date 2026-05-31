@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   Image,
   Pressable,
@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 
+import ConfirmModal from "../../components/ConfirmModal";
 import PageHeader from "../../components/PageHeader";
 import SectionHeader from "../../components/SectionHeader";
 import { supabase } from "../../lib/supabase";
@@ -20,10 +21,14 @@ export default function ModulesScreen() {
 
   const [layout, setLayout] = useState<"grid" | "list">("grid");
   const [modules, setModules] = useState<any[]>([]);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [moduleToDelete, setModuleToDelete] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchModules();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchModules();
+    }, [])
+  );
 
   const fetchModules = async () => {
     try {
@@ -90,6 +95,11 @@ export default function ModulesScreen() {
     }
   };
 
+  const askDeleteModule = (moduleId: string) => {
+    setModuleToDelete(moduleId);
+    setDeleteModalVisible(true);
+  };
+
   const deleteModule = async (moduleId: string) => {
     try {
       const res = await fetch(`${API_URL}/modules/${moduleId}`, {
@@ -103,8 +113,6 @@ export default function ModulesScreen() {
       }
 
       setModules((prev) => prev.filter((item) => item.id !== moduleId));
-
-      alert("Module verwijderd");
     } catch (error) {
       console.log("Delete module error:", error);
       alert(String(error));
@@ -163,7 +171,7 @@ export default function ModulesScreen() {
             modules={teacherModules}
             layout={layout}
             router={router}
-            deleteModule={deleteModule}
+            askDeleteModule={askDeleteModule}
           />
 
           <ModuleSection
@@ -171,26 +179,50 @@ export default function ModulesScreen() {
             modules={studentModules}
             layout={layout}
             router={router}
-            deleteModule={deleteModule}
+            askDeleteModule={askDeleteModule}
           />
         </>
       )}
+
+      <ConfirmModal
+        visible={deleteModalVisible}
+        title="Module verwijderen?"
+        message="Ben je zeker dat je deze module wilt verwijderen? Deze actie kan niet ongedaan gemaakt worden."
+        cancelText="Annuleren"
+        confirmText="Verwijderen"
+        destructive
+        onCancel={() => {
+          setDeleteModalVisible(false);
+          setModuleToDelete(null);
+        }}
+        onConfirm={() => {
+          if (moduleToDelete) {
+            deleteModule(moduleToDelete);
+          }
+
+          setDeleteModalVisible(false);
+          setModuleToDelete(null);
+        }}
+      />
     </View>
   );
-} 
+}
+
 function ModuleSection({
   title,
   modules,
   layout,
   router,
-  deleteModule,
+  askDeleteModule,
 }: {
   title: string;
   modules: any[];
   layout: "grid" | "list";
   router: any;
-  deleteModule: (id: string) => void;
+  askDeleteModule: (id: string) => void;
 }) {
+  if (modules.length === 0) return null;
+
   return (
     <View style={styles.sectionBlock}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -202,34 +234,21 @@ function ModuleSection({
               key={item.id}
               style={[
                 styles.gridCard,
-                item.source === "teacher" &&
-                  styles.teacherCard,
+                item.source === "teacher" && styles.teacherCard,
               ]}
             >
               {item.source === "teacher" && (
                 <View style={styles.teacherBadge}>
-                  <Text
-                    style={styles.teacherBadgeText}
-                  >
-                    LEERKRACHT
-                  </Text>
+                  <Text style={styles.teacherBadgeText}>LEERKRACHT</Text>
                 </View>
               )}
 
               {item.source === "student" && (
                 <Pressable
                   style={styles.deleteButton}
-                  onPress={() =>
-                    deleteModule(item.id)
-                  }
+                  onPress={() => askDeleteModule(item.id)}
                 >
-                  <Text
-                    style={
-                      styles.deleteButtonText
-                    }
-                  >
-                    🗑
-                  </Text>
+                  <Text style={styles.deleteButtonText}>🗑</Text>
                 </Pressable>
               )}
 
@@ -237,34 +256,18 @@ function ModuleSection({
                 style={styles.gridCardContent}
                 onPress={() =>
                   router.push({
-                    pathname:
-                      "/module-preview",
+                    pathname: "/module-preview",
                     params: {
                       subject: item.subject,
                     },
                   } as any)
                 }
               >
-                <SubjectIcon
-                  letter={
-                    item.subject?.[0] || "?"
-                  }
-                  grid
-                />
+                <SubjectIcon letter={item.subject?.[0] || "?"} grid />
 
-                <Text
-                  style={styles.subjectName}
-                >
-                  {item.subject}
-                </Text>
+                <Text style={styles.subjectName}>{item.subject}</Text>
 
-                <Text
-                  style={
-                    styles.subSubjectName
-                  }
-                >
-                  {item.sub_subject}
-                </Text>
+                <Text style={styles.subSubjectName}>{item.sub_subject}</Text>
               </Pressable>
             </View>
           ))}
@@ -276,73 +279,43 @@ function ModuleSection({
               key={item.id}
               style={[
                 styles.listCard,
-                item.source === "teacher" &&
-                  styles.teacherCard,
+                item.source === "teacher" && styles.teacherCard,
               ]}
             >
               <Pressable
                 style={styles.listContent}
                 onPress={() =>
                   router.push({
-                    pathname:
-                      "/module-preview",
+                    pathname: "/module-preview",
                     params: {
                       subject: item.subject,
                     },
                   } as any)
                 }
               >
-                <SubjectIcon
-                  letter={
-                    item.subject?.[0] || "?"
-                  }
-                />
+                <SubjectIcon letter={item.subject?.[0] || "?"} />
 
                 <View>
-                  <Text
-                    style={styles.listName}
-                  >
-                    {item.subject}
-                  </Text>
+                  <Text style={styles.listName}>{item.subject}</Text>
 
-                  <Text
-                    style={
-                      styles.subSubjectName
-                    }
-                  >
+                  <Text style={styles.subSubjectName}>
                     {item.sub_subject}
                   </Text>
 
-                  {item.source ===
-                    "teacher" && (
-                    <Text
-                      style={
-                        styles.teacherSmallText
-                      }
-                    >
+                  {item.source === "teacher" && (
+                    <Text style={styles.teacherSmallText}>
                       Module van leerkracht
                     </Text>
                   )}
                 </View>
               </Pressable>
 
-              {item.source ===
-                "student" && (
+              {item.source === "student" && (
                 <Pressable
-                  style={
-                    styles.listDeleteButton
-                  }
-                  onPress={() =>
-                    deleteModule(item.id)
-                  }
+                  style={styles.listDeleteButton}
+                  onPress={() => askDeleteModule(item.id)}
                 >
-                  <Text
-                    style={
-                      styles.deleteButtonText
-                    }
-                  >
-                    🗑
-                  </Text>
+                  <Text style={styles.deleteButtonText}>🗑</Text>
                 </Pressable>
               )}
             </View>
@@ -437,6 +410,18 @@ const styles = StyleSheet.create({
   layoutButton: {
     fontSize: 18,
     color: "#777",
+  },
+
+  sectionBlock: {
+    marginBottom: 22,
+  },
+
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#555",
+    marginHorizontal: 26,
+    marginBottom: 12,
   },
 
   grid: {
@@ -535,43 +520,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#E56D6D",
   },
-  sectionBlock: {
-  marginBottom: 22,
-},
 
-sectionTitle: {
-  fontSize: 15,
-  fontWeight: "700",
-  color: "#555",
-  marginHorizontal: 26,
-  marginBottom: 12,
-},
+  teacherCard: {
+    borderWidth: 1.5,
+    borderColor: "#5CBC4F",
+  },
 
-teacherCard: {
-  borderWidth: 1.5,
-  borderColor: "#5CBC4F",
-},
+  teacherBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "#EAF6E5",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    zIndex: 10,
+  },
 
-teacherBadge: {
-  position: "absolute",
-  top: 8,
-  right: 8,
-  backgroundColor: "#EAF6E5",
-  borderRadius: 6,
-  paddingHorizontal: 6,
-  paddingVertical: 3,
-  zIndex: 10,
-},
+  teacherBadgeText: {
+    fontSize: 8,
+    color: "#5CBC4F",
+    fontWeight: "700",
+  },
 
-teacherBadgeText: {
-  fontSize: 8,
-  color: "#5CBC4F",
-  fontWeight: "700",
-},
-
-teacherSmallText: {
-  fontSize: 10,
-  color: "#5CBC4F",
-  marginTop: 2,
-},
+  teacherSmallText: {
+    fontSize: 10,
+    color: "#5CBC4F",
+    marginTop: 2,
+  },
 });

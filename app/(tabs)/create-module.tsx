@@ -41,14 +41,21 @@ export default function CreateModuleScreen() {
   const [subSubject, setSubSubject] = useState("");
   const [customSubSubject, setCustomSubSubject] = useState("");
   const [subSubjectOpen, setSubSubjectOpen] = useState(false);
+const [generating, setGenerating] = useState(false);
 
-  const finalSubject = subject === "Anders" ? customSubject : subject;
-  const finalSubSubject =
-    subSubject === "Anders" ? customSubSubject : subSubject;
+const finalSubject =
+  subject === "Anders" ? customSubject : subject;
 
- const handleNext = async () => {
+const finalSubSubject =
+  subSubject === "Anders"
+    ? customSubSubject
+    : subSubject;
+
+const handleNext = async () => {
   if (!uploadId) {
-    alert("Geen PDF gevonden. Ga terug en kies eerst een PDF.");
+    alert(
+      "Geen PDF gevonden. Ga terug en kies eerst een PDF."
+    );
     return;
   }
 
@@ -62,16 +69,24 @@ export default function CreateModuleScreen() {
     return;
   }
 
+  setGenerating(true);
+
   try {
-    const { data: userData } = await supabase.auth.getUser();
+    const { data: userData } =
+      await supabase.auth.getUser();
+
     const user = userData.user;
 
     if (!user) {
       alert("Geen gebruiker gevonden");
+      setGenerating(false);
       return;
     }
 
-    const { data: profileData, error: profileError } = await supabase
+    const {
+      data: profileData,
+      error: profileError,
+    } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
@@ -81,61 +96,86 @@ export default function CreateModuleScreen() {
       throw profileError;
     }
 
-    const role = profileData?.role || "leerling";
+    const role =
+      profileData?.role || "leerling";
 
-    const response = await fetch(`${API_URL}/modules`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        subject: finalSubject,
-        sub_subject: finalSubSubject,
+    const response = await fetch(
+      `${API_URL}/modules`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify({
+          subject: finalSubject,
+          sub_subject: finalSubSubject,
+          user_id:
+            role === "leerling"
+              ? user.id
+              : null,
+          created_by: user.id,
+          owner_role: role,
+          visibility:
+            role === "leerkracht"
+              ? "class"
+              : "private",
+        }),
+      }
+    );
 
-        user_id: role === "leerling" ? user.id : null,
-        created_by: user.id,
-        owner_role: role,
-        visibility: role === "leerkracht" ? "class" : "private",
-      }),
-    });
-
-const moduleData = await response.json();
+    const moduleData =
+      await response.json();
 
     if (!response.ok) {
-      throw new Error(moduleData.error || "Module opslaan mislukt");
+      throw new Error(
+        moduleData.error ||
+          "Module opslaan mislukt"
+      );
     }
 
-    const qRes = await fetch(`${API_URL}/generate-questions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        subject: finalSubject,
-        subSubject: finalSubSubject,
-        uploadId,
-      }),
-    });
+    const qRes = await fetch(
+      `${API_URL}/generate-questions`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify({
+          subject: finalSubject,
+          subSubject: finalSubSubject,
+          uploadId,
+        }),
+      }
+    );
 
     const qData = await qRes.json();
 
     if (!qRes.ok) {
-      throw new Error(qData.error || "Vragen genereren mislukt");
+      throw new Error(
+        qData.error ||
+          "Vragen genereren mislukt"
+      );
     }
+
+    setGenerating(false);
 
     router.push({
       pathname: "/questions",
       params: {
         moduleId: moduleData.id,
-        questions: JSON.stringify(qData.questions),
+        questions: JSON.stringify(
+          qData.questions
+        ),
       },
     } as any);
   } catch (error) {
+    setGenerating(false);
     console.log(error);
     alert(String(error));
   }
 };
-
   return (
     <View style={styles.screen}>
       <PageHeader title="Modules" />
@@ -231,9 +271,15 @@ const moduleData = await response.json();
           <Text style={styles.backButtonText}>Ga terug</Text>
         </Pressable>
 
-        <Pressable style={styles.nextButton} onPress={handleNext}>
-          <Text style={styles.nextButtonText}>Ga verder</Text>
-        </Pressable>
+        <Pressable
+  style={[styles.nextButton, generating && styles.disabledButton]}
+  onPress={handleNext}
+  disabled={generating}
+>
+  <Text style={styles.nextButtonText}>
+    {generating ? "Vragen worden gegenereerd..." : "Ga verder"}
+  </Text>
+</Pressable>
       </View>
 
       <Pressable
@@ -376,4 +422,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 13,
   },
+  disabledButton: {
+  opacity: 0.5,
+},
 });

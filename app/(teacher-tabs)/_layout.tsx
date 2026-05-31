@@ -124,38 +124,6 @@ export default function TeacherTabsLayout() {
     headerShown: false,
   }}
 />
-
-<Tabs.Screen
-  name="profiel"
-  options={{
-    href: null,
-    headerShown: false,
-  }}
-/>
-
-<Tabs.Screen
-  name="help"
-  options={{
-    href: null,
-    headerShown: false,
-  }}
-/>
-
-<Tabs.Screen
-  name="privacybeleid"
-  options={{
-    href: null,
-    headerShown: false,
-  }}
-/>
-
-<Tabs.Screen
-  name="cache"
-  options={{
-    href: null,
-    headerShown: false,
-  }}
-/>
     </Tabs>
   );
 }

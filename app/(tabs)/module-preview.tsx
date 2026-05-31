@@ -11,6 +11,7 @@ import {
 
 import PageHeader from "../../components/PageHeader";
 import SectionHeader from "../../components/SectionHeader";
+import { supabase } from "../../lib/supabase";
 
 const API_URL = "http://localhost:3000";
 
@@ -26,29 +27,71 @@ export default function ModulePreviewScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchSubModules = async () => {
-      try {
-        const res = await fetch(`${API_URL}/modules`);
-        const data = await res.json();
-
-        const filtered = data.filter(
-          (m: any) =>
-            m.subject?.trim().toLowerCase() ===
-            subject?.trim().toLowerCase()
-        );
-
-        setSubModules(filtered);
-      } catch (err) {
-        console.log(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (subject) {
-      fetchSubModules();
-    }
+    fetchSubModules();
   }, [subject]);
+
+  const fetchSubModules = async () => {
+    if (!subject) return;
+
+    setLoading(true);
+
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+
+      if (!user) return;
+
+      const { data: ownModules } = await supabase
+        .from("modules")
+        .select("*")
+        .eq("created_by", user.id)
+        .eq("subject", subject);
+
+      const { data: classLinks } = await supabase
+        .from("class_students")
+        .select("class_id")
+        .eq("student_id", user.id);
+
+      const classIds = classLinks?.map((item) => item.class_id) || [];
+
+      let teacherModules: any[] = [];
+
+      if (classIds.length > 0) {
+        const { data: moduleLinks } = await supabase
+          .from("module_classes")
+          .select("module_id")
+          .in("class_id", classIds);
+
+        const moduleIds = moduleLinks?.map((item) => item.module_id) || [];
+
+        if (moduleIds.length > 0) {
+          const res = await fetch(`${API_URL}/modules/by-ids`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              ids: moduleIds,
+            }),
+          });
+
+          const fetchedTeacherModules = await res.json();
+
+          teacherModules = (fetchedTeacherModules || []).filter(
+            (module: any) =>
+              module.subject?.trim().toLowerCase() ===
+              subject.trim().toLowerCase()
+          );
+        }
+      }
+
+      setSubModules([...(teacherModules || []), ...(ownModules || [])]);
+    } catch (err) {
+      console.log("Fetch submodules error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.screen}>
@@ -78,9 +121,7 @@ export default function ModulePreviewScreen() {
       {loading ? (
         <ActivityIndicator color="#5CBC4F" />
       ) : subModules.length === 0 ? (
-        <Text style={styles.emptyText}>
-          Geen submodules gevonden.
-        </Text>
+        <Text style={styles.emptyText}>Geen submodules gevonden.</Text>
       ) : (
         subModules.map((item, index) => (
           <ModuleRow

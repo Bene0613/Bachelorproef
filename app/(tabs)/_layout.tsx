@@ -109,37 +109,15 @@ export default function TabLayout() {
   }}
 />
 
+
 <Tabs.Screen
-  name="profiel"
+  name="practice-module"
   options={{
     href: null,
     headerShown: false,
   }}
 />
 
-<Tabs.Screen
-  name="help"
-  options={{
-    href: null,
-    headerShown: false,
-  }}
-/>
-
-<Tabs.Screen
-  name="privacybeleid"
-  options={{
-    href: null,
-    headerShown: false,
-  }}
-/>
-
-<Tabs.Screen
-  name="cache"
-  options={{
-    href: null,
-    headerShown: false,
-  }}
-/>
     </Tabs>
   );
 }

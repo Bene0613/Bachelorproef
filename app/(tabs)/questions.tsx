@@ -9,6 +9,8 @@ import {
   View,
 } from "react-native";
 
+import ConfirmModal from "../../components/ConfirmModal";
+
 const API_URL = "http://localhost:3000";
 
 export default function QuestionsScreen() {
@@ -28,6 +30,7 @@ export default function QuestionsScreen() {
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 
   useEffect(() => {
     setQuestions(parsedQuestions);
@@ -58,6 +61,7 @@ export default function QuestionsScreen() {
     }
 
     setIsEditing(false);
+    setDeleteModalVisible(false);
   };
 
   const updateQuestionText = (text: string) => {
@@ -99,7 +103,10 @@ export default function QuestionsScreen() {
 
       router.push({
         pathname: "/loading",
-        params: { next: "/modules" },
+        params: {
+          next: "/modules",
+          text: "Module wordt opgeslagen...",
+        },
       } as any);
     } catch (error) {
       console.log("Save questions error:", error);
@@ -133,7 +140,7 @@ export default function QuestionsScreen() {
         </Text>
 
         <View style={styles.iconRow}>
-          <Pressable onPress={deleteCurrentQuestion}>
+          <Pressable onPress={() => setDeleteModalVisible(true)}>
             <Text style={styles.icon}>⌫</Text>
           </Pressable>
 
@@ -228,10 +235,20 @@ export default function QuestionsScreen() {
       >
         <Text style={styles.homeButtonText}>Terug naar “huis”</Text>
       </Pressable>
+
+      <ConfirmModal
+        visible={deleteModalVisible}
+        title="Vraag verwijderen?"
+        message="Ben je zeker dat je deze vraag wilt verwijderen?"
+        cancelText="Annuleren"
+        confirmText="Verwijderen"
+        destructive
+        onCancel={() => setDeleteModalVisible(false)}
+        onConfirm={deleteCurrentQuestion}
+      />
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   screen: {
     flex: 1,

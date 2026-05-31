@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,7 +12,13 @@ import {
 const API_URL = "http://localhost:3000";
 
 export default function SubmodulePreviewScreen() {
+  const router = useRouter();
   const { moduleId } = useLocalSearchParams();
+
+  const cleanModuleId = Array.isArray(moduleId)
+    ? moduleId[0]
+    : moduleId;
+
   const [questions, setQuestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -20,8 +26,9 @@ export default function SubmodulePreviewScreen() {
     const fetchQuestions = async () => {
       try {
         const res = await fetch(
-          `${API_URL}/modules/${moduleId}/questions`
+          `${API_URL}/modules/${cleanModuleId}/questions`
         );
+
         const data = await res.json();
         setQuestions(data);
       } catch (err) {
@@ -31,8 +38,8 @@ export default function SubmodulePreviewScreen() {
       }
     };
 
-    if (moduleId) fetchQuestions();
-  }, [moduleId]);
+    if (cleanModuleId) fetchQuestions();
+  }, [cleanModuleId]);
 
   return (
     <View style={styles.screen}>
@@ -40,74 +47,72 @@ export default function SubmodulePreviewScreen() {
         colors={["#EAF6E5", "#FFF9FC"]}
         style={styles.header}
       >
-        <Text style={styles.title}>Vragen</Text>
+        <Text style={styles.title}>Oefeningen</Text>
       </LinearGradient>
 
       <View style={styles.greenLine} />
 
       <Text style={styles.description}>
-        Bekijk en open de vragen van dit subvak.
+        Start deze module en beantwoord de vragen één voor één. Je krijgt na
+        elke vraag directe feedback.
       </Text>
 
-      {loading ? (
-        <ActivityIndicator color="#5CBC4F" />
-      ) : questions.length === 0 ? (
-        <Text style={styles.emptyText}>
-          Geen vragen gevonden.
-        </Text>
-      ) : (
-        questions.map((q, index) => (
-          <QuestionRow
-            key={q.id}
-            index={index + 1}
-            question={q.question}
-            answers={q.answers}
-            correct={q.correct_answer}
-          />
-        ))
-      )}
-    </View>
-  );
-}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Module klaar</Text>
 
-function QuestionRow({
-  index,
-  question,
-  answers,
-  correct,
-}: {
-  index: number;
-  question: string;
-  answers: string[];
-  correct: string;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <View style={styles.card}>
-      <View style={styles.rowHeader}>
-        <Text style={styles.number}>{index}.</Text>
-        <Text style={styles.question}>{question}</Text>
-        <Pressable onPress={() => setOpen(!open)}>
-          <Text style={styles.openBtn}>{open ? "Sluit" : "Open"}</Text>
-        </Pressable>
-      </View>
-
-      {open && (
-        <View style={styles.answersBox}>
-          {answers.map((a) => (
-            <Text
-              key={a}
-              style={[
-                styles.answer,
-                a === correct && styles.correct,
-              ]}
-            >
-              • {a}
+        {loading ? (
+          <ActivityIndicator color="#5CBC4F" />
+        ) : (
+          <>
+            <Text style={styles.infoText}>
+              Aantal vragen: {questions.length}
             </Text>
-          ))}
-        </View>
-      )}
+
+            <Text style={styles.infoText}>
+              Feedback: na elke vraag
+            </Text>
+
+            <Text style={styles.infoText}>
+              Resultaat: op het einde van de oefening
+            </Text>
+
+            <Pressable
+              style={[
+                styles.startButton,
+                questions.length === 0 && styles.disabledButton,
+              ]}
+              disabled={questions.length === 0}
+              onPress={() =>
+                router.push({
+                  pathname: "/practice-module",
+                  params: { moduleId: cleanModuleId, restart: "true" },
+                } as any)
+              }
+            >
+              <Text style={styles.startButtonText}>
+                Start oefeningen
+              </Text>
+              <Pressable
+  style={styles.restartButton}
+  disabled={questions.length === 0}
+  onPress={() =>
+    router.push({
+      pathname: "/practice-module",
+      params: {
+        moduleId: cleanModuleId,
+        restart: "true",
+      },
+    } as any)
+  }
+>
+  <Text style={styles.restartButtonText}>
+    Opnieuw maken
+  </Text>
+</Pressable>
+            </Pressable>
+          </>
+        )}
+      </View>
     </View>
   );
 }
@@ -116,70 +121,87 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#FFF9FC",
-    paddingTop: 28,
-    paddingHorizontal: 26,
   },
+
   header: {
-    height: 100,
-    justifyContent: "flex-end",
+    paddingTop: 28,
+    paddingBottom: 14,
     alignItems: "center",
-    paddingBottom: 12,
   },
+
   title: {
     fontSize: 26,
     fontWeight: "700",
     color: "#777",
   },
+
   greenLine: {
     height: 3,
     backgroundColor: "#6BCB59",
-    marginHorizontal: -26,
-    marginBottom: 20,
+    width: "100%",
+    marginBottom: 24,
   },
+
   description: {
-    textAlign: "center",
-    fontSize: 12,
+    marginHorizontal: 34,
+    fontSize: 13,
     color: "#555",
-    marginBottom: 20,
-  },
-  emptyText: {
+    lineHeight: 19,
+    marginBottom: 24,
     textAlign: "center",
-    color: "#777",
-    marginTop: 20,
   },
+
   card: {
     backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-  },
-  rowHeader: {
-    flexDirection: "row",
+    marginHorizontal: 34,
+    borderRadius: 14,
+    padding: 22,
     alignItems: "center",
   },
-  number: {
+
+  cardTitle: {
+    fontSize: 18,
     fontWeight: "700",
-    marginRight: 6,
-  },
-  question: {
-    flex: 1,
-    fontSize: 13,
     color: "#444",
+    marginBottom: 18,
   },
-  openBtn: {
-    color: "#5CBC4F",
-    fontWeight: "600",
-  },
-  answersBox: {
-    marginTop: 10,
-  },
-  answer: {
-    fontSize: 12,
+
+  infoText: {
+    fontSize: 13,
     color: "#555",
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  correct: {
-    color: "#5CBC4F",
+
+  startButton: {
+    marginTop: 22,
+    backgroundColor: "#5CBC4F",
+    borderRadius: 8,
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+  },
+
+  disabledButton: {
+    opacity: 0.4,
+  },
+
+  startButtonText: {
+    color: "#fff",
+    fontSize: 13,
     fontWeight: "700",
   },
+  restartButton: {
+  marginTop: 12,
+  borderWidth: 1.5,
+  borderColor: "#5CBC4F",
+  borderRadius: 8,
+  paddingHorizontal: 22,
+  paddingVertical: 11,
+  backgroundColor: "#fff",
+},
+
+restartButtonText: {
+  color: "#5CBC4F",
+  fontSize: 13,
+  fontWeight: "700",
+},
 });

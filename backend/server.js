@@ -135,47 +135,72 @@ if (!fileText) {
 }
     
 const prompt = `
-Maak 4 oefenvragen in het Nederlands voor een leerling secundair onderwijs.
+Maak oefenvragen in het Nederlands voor een leerling uit de derde graad secundair onderwijs (STEM-richting).
 
 Gebruik vooral deze tekst uit de PDF:
-${fileText.slice(0, 6000)}
+${fileText.slice(0, 12000)}
 
 Vak: ${subject}
 Subvak: ${subSubject}
 
-Maak verschillende vraagtypes:
+Genereer een passend aantal vragen zodat alle belangrijke concepten uit de leerstof aan bod komen.
+
+Richtlijnen:
+- Kleine leerstof: ongeveer 4 tot 6 vragen
+- Middelgrote leerstof: ongeveer 8 tot 15 vragen
+- Grote leerstof: ongeveer 15 tot 25 vragen
+- Vermijd herhaling
+- Focus op de belangrijkste begrippen, formules, definities en toepassingen
+- Zorg voor een mix van moeilijkheidsgraden
+
+Gebruik verschillende vraagtypes:
 - multiple_choice
 - short_answer
 - true_false
-- open_question
+
+Elke vraag moet een duidelijke uitleg bevatten.
+
+De uitleg moet:
+- verklaren waarom het juiste antwoord correct is
+- bij multiple choice ook uitleggen waarom de andere antwoorden fout zijn
+- leerzaam zijn voor de leerling
+- minimaal 2 zinnen bevatten
+- maximaal 5 zinnen bevatten
 
 Geef ALLEEN geldige JSON terug.
+
 Gebruik exact deze structuur:
+
 [
   {
     "type": "multiple_choice",
     "question": "vraagtekst",
-    "answers": ["antwoord A", "antwoord B", "antwoord C", "antwoord D"],
-    "correctAnswer": "exact juiste antwoord"
+    "answers": [
+      "antwoord A",
+      "antwoord B",
+      "antwoord C",
+      "antwoord D"
+    ],
+    "correctAnswer": "exact juiste antwoord",
+    "explanation": "Duidelijke uitleg waarom dit antwoord correct is en waarom de andere opties fout zijn."
   },
   {
     "type": "short_answer",
     "question": "vraagtekst",
     "answers": [],
-    "correctAnswer": "kort correct antwoord"
+    "correctAnswer": "kort correct antwoord",
+    "explanation": "Duidelijke uitleg waarom dit antwoord correct is."
   },
   {
     "type": "true_false",
     "question": "stelling",
-    "answers": ["Waar", "Niet waar"],
-    "correctAnswer": "Waar"
+    "answers": [
+      "Waar",
+      "Niet waar"
+    ],
+    "correctAnswer": "Waar",
+    "explanation": "Duidelijke uitleg waarom deze stelling waar of niet waar is."
   },
-  {
-    "type": "open_question",
-    "question": "vraagtekst",
-    "answers": [],
-    "correctAnswer": "voorbeeldantwoord"
-  }
 ]
 `;
 
@@ -214,6 +239,7 @@ app.post("/questions", async (req, res) => {
       question: q.question || "",
       answers: q.answers || [],
       correct_answer: q.correctAnswer || q.correct_answer || "",
+      explanation: q.explanation || "",
     }));
 
     const { data, error } = await supabase

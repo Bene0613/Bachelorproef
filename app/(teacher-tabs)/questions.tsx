@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-
+import ConfirmModal from "../../components/ConfirmModal";
 const API_URL = "http://localhost:3000";
 
 export default function QuestionsScreen() {

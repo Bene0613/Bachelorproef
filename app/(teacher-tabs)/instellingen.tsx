@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   Image,
   Pressable,
@@ -29,44 +29,37 @@ export default function SettingsScreen() {
     avatar_url: null,
   });
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      const { data: userData } =
-        await supabase.auth.getUser();
+  const fetchProfile = async () => {
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
 
-      const user = userData.user;
+    if (!user) return;
 
-      if (!user) return;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("name, email, role, avatar_url")
+      .eq("id", user.id)
+      .single();
 
-      const { data, error } = await supabase
-        .from("profiles")
-        .select(
-          "name, email, role, avatar_url"
-        )
-        .eq("id", user.id)
-        .single();
+    if (error) {
+      console.log("Fetch settings profile error:", error);
+      return;
+    }
 
-      if (error) {
-        console.log(
-          "Fetch settings profile error:",
-          error
-        );
+    setProfile({
+      name: data.name || "",
+      email: data.email || user.email || "",
+      role: data.role || "",
+      avatar_url: data.avatar_url || null,
+    });
+  };
 
-        return;
-      }
-
-      setProfile({
-        name: data.name || "",
-        email:
-          data.email || user.email || "",
-        role: data.role || "",
-        avatar_url:
-          data.avatar_url || null,
-      });
-    };
-
-    fetchProfile();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfile();
+    }, [])
+  );
+   
 
   return (
     <View style={styles.screen}>

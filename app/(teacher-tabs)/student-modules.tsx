@@ -42,29 +42,42 @@ export default function StudentModulesScreen() {
 
   useEffect(() => {
     fetchStudentModules();
-  }, []);
+  }, [studentId]);
 
-  const fetchStudentModules = async () => {
-    if (!studentId || !subject) return;
+const fetchStudentModules = async () => {
+  if (!studentId) return;
 
-    const { data, error } = await supabase
-      .from("modules")
-      .select("id, subject, sub_subject, created_at")
-      .eq("user_id", studentId)
-      .eq("subject", subject)
-      .order("created_at", { ascending: false });
+  setModules([]);
 
-    if (error) {
-      console.log("Student modules error:", error);
-      return;
-    }
+  const { data, error } = await supabase
+    .from("modules")
+    .select(
+      "id, subject, sub_subject, created_at, user_id, created_by, owner_role"
+    )
+    .or(`user_id.eq.${studentId},created_by.eq.${studentId}`)
+    .eq("owner_role", "leerling")
+    .order("created_at", { ascending: false });
 
-    setModules(data || []);
-  };
+  if (error) {
+    console.log("Student modules error:", error);
+    return;
+  }
 
-  const filteredModules = modules.filter((item) =>
-    item.sub_subject?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredBySubject = subject
+    ? (data || []).filter(
+        (module) =>
+          module.subject?.trim().toLowerCase() ===
+          subject.trim().toLowerCase()
+      )
+    : data || [];
+
+  setModules(filteredBySubject);
+};
+
+  const filteredModules = modules.filter((item) => {
+  const value = `${item.subject} ${item.sub_subject}`.toLowerCase();
+  return value.includes(search.toLowerCase());
+});
 
   return (
     <View style={styles.screen}>

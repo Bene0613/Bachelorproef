@@ -9,6 +9,8 @@ import {
   View,
 } from "react-native";
 
+import ConfirmModal from "../components/ConfirmModal";
+
 import { supabase } from "../lib/supabase";
 
 type Profile = {
@@ -32,20 +34,21 @@ const plans = [
   {
     title: "STUDENT",
     price: "€9/maand",
-    label: "HUIDIGE",
+    label: "",
     details: "Onbeperkte oefeningen • slimme AI • exam mode",
   },
   {
     title: "SCHOOL & LEERKRACHTEN",
     price: "Offerte",
-    label: "PRO",
+    label: "",
     details: "Klassenbeheer • gedeelde modules • analytics",
   },
 ];
 
 export default function ProfileScreen() {
-  const [currentPlan, setCurrentPlan] = useState(1);
+  const [currentPlan, setCurrentPlan] = useState(0);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+const [deletePhotoModalVisible, setDeletePhotoModalVisible] = useState(false);
 
   const [profile, setProfile] = useState<Profile>({
     name: "",
@@ -119,6 +122,12 @@ export default function ProfileScreen() {
         study_program: data.study_program || null,
         school_verified: data.school_verified ?? false,
       });
+
+      if (data.role === "leerkracht") {
+         setCurrentPlan(2);
+        } else {
+           setCurrentPlan(1);
+        }
 
       setProfileImage(data.avatar_url || null);
     };
@@ -272,13 +281,6 @@ export default function ProfileScreen() {
             <Text style={styles.photoButtonText}>Neem foto</Text>
           </Pressable>
         </View>
-
-        <Pressable
-          style={styles.deletePhotoButton}
-          onPress={deleteProfileImage}
-        >
-          <Text style={styles.deletePhotoText}>Verwijder foto</Text>
-        </Pressable>
       </View>
 
       <Text style={styles.sectionTitle}>Persoonlijke info</Text>
@@ -326,8 +328,14 @@ export default function ProfileScreen() {
 
         <View style={styles.planCard}>
           <View style={styles.planBadge}>
-            <Text style={styles.planBadgeText}>{plan.label}</Text>
-          </View>
+  <Text style={styles.planBadgeText}>
+    {currentPlan === 1 && profile.role === "leerling"
+      ? "HUIDIGE"
+      : currentPlan === 2 && profile.role === "leerkracht"
+      ? "HUIDIGE"
+      : plan.label}
+  </Text>
+</View>
 
           <Text style={styles.planName}>{plan.title}</Text>
           <Text style={styles.planPrice}>{plan.price}</Text>
@@ -353,6 +361,20 @@ export default function ProfileScreen() {
           />
         ))}
       </View>
+      
+        <ConfirmModal
+  visible={deletePhotoModalVisible}
+  title="Profielfoto verwijderen?"
+  message="Ben je zeker dat je je profielfoto wilt verwijderen?"
+  cancelText="Annuleren"
+  confirmText="Verwijderen"
+  destructive
+  onCancel={() => setDeletePhotoModalVisible(false)}
+  onConfirm={() => {
+    setDeletePhotoModalVisible(false);
+    deleteProfileImage();
+  }}
+/>
     </View>
   );
 }

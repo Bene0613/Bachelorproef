@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   Image,
   Pressable,
@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 
+import ConfirmModal from "../../components/ConfirmModal";
 import PageHeader from "../../components/PageHeader";
 import SectionHeader from "../../components/SectionHeader";
 import { supabase } from "../../lib/supabase";
@@ -20,37 +21,66 @@ export default function ModulesScreen() {
 
   const [layout, setLayout] = useState<"grid" | "list">("grid");
   const [modules, setModules] = useState<any[]>([]);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [moduleToDelete, setModuleToDelete] = useState<string | null>(null);
 
-useEffect(() => {
-  fetchModules();
-}, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchModules();
+    }, [])
+  );
 
-const fetchModules = async () => {
-  try {
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData.user;
+  const fetchModules = async () => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
 
-    if (!user) return;
+      if (!user) return;
 
-    const { data, error } = await supabase
-      .from("modules")
-      .select("*")
-      .eq("created_by", user.id)
-      .eq("owner_role", "leerkracht")
-      .order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("modules")
+        .select("*")
+        .eq("created_by", user.id)
+        .eq("owner_role", "leerkracht")
+        .order("created_at", { ascending: false });
 
-    if (error) {
-      console.log("Fetch teacher modules error:", error);
-      return;
+      if (error) {
+        console.log("Fetch teacher modules error:", error);
+        return;
+      }
+
+      setModules(data || []);
+    } catch (err) {
+      console.log(err);
     }
+  };
 
-    setModules(data || []);
-  } catch (err) {
-    console.log(err);
-  }
-};
+  const askDeleteModule = (moduleId: string) => {
+    setModuleToDelete(moduleId);
+    setDeleteModalVisible(true);
+  };
+
+  const deleteModule = async (moduleId: string) => {
+    try {
+      const res = await fetch(`${API_URL}/modules/${moduleId}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Module verwijderen mislukt");
+      }
+
+      setModules((prev) => prev.filter((item) => item.id !== moduleId));
+    } catch (error) {
+      console.log("Delete teacher module error:", error);
+      alert(String(error));
+    }
+  };
 
   const hasModules = modules.length > 0;
+
   const uniqueModules = [
     ...new Map(modules.map((m) => [m.subject, m])).values(),
   ];
@@ -77,9 +107,7 @@ const fetchModules = async () => {
             style={styles.emptyImage}
           />
 
-          <Text style={styles.emptyTitle}>
-            Er zijn nog geen modules
-          </Text>
+          <Text style={styles.emptyTitle}>Er zijn nog geen modules</Text>
 
           <Text style={styles.emptyText}>
             Ga naar Home om een PDF te uploaden en je eerste module te maken
@@ -91,9 +119,7 @@ const fetchModules = async () => {
             <Text style={styles.filterText}>Filters⌃</Text>
 
             <Pressable
-              onPress={() =>
-                setLayout(layout === "grid" ? "list" : "grid")
-              }
+              onPress={() => setLayout(layout === "grid" ? "list" : "grid")}
             >
               <Text style={styles.layoutButton}>
                 {layout === "grid" ? "☷" : "▦"}
@@ -104,58 +130,91 @@ const fetchModules = async () => {
           {layout === "grid" ? (
             <View style={styles.grid}>
               {uniqueModules.map((item) => (
-                <Pressable
-                  key={item.id}
-                  style={styles.gridCard}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/module-preview",
-                      params: { subject: item.subject },
-                    } as any)
-                  }
-                >
-                  <SubjectIcon letter={item.subject?.[0] || "?"} grid />
+                <View key={item.id} style={styles.gridCard}>
+                  <Pressable
+                    style={styles.deleteButton}
+                    onPress={() => askDeleteModule(item.id)}
+                  >
+                    <Text style={styles.deleteButtonText}>🗑</Text>
+                  </Pressable>
 
-                  <Text style={styles.subjectName}>
-                    {item.subject}
-                  </Text>
+                  <Pressable
+                    style={styles.gridCardContent}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/module-preview",
+                        params: { subject: item.subject },
+                      } as any)
+                    }
+                  >
+                    <SubjectIcon letter={item.subject?.[0] || "?"} grid />
 
-                  <Text style={styles.subSubjectName}>
-                    {item.sub_subject}
-                  </Text>
-                </Pressable>
+                    <Text style={styles.subjectName}>{item.subject}</Text>
+
+                    <Text style={styles.subSubjectName}>
+                      {item.sub_subject}
+                    </Text>
+                  </Pressable>
+                </View>
               ))}
             </View>
           ) : (
             <View style={styles.list}>
               {uniqueModules.map((item) => (
-                <Pressable
-                  key={item.id}
-                  style={styles.listCard}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/module-preview",
-                      params: { subject: item.subject },
-                    } as any)
-                  }
-                >
-                  <SubjectIcon letter={item.subject?.[0] || "?"} />
+                <View key={item.id} style={styles.listCard}>
+                  <Pressable
+                    style={styles.listContent}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/module-preview",
+                        params: { subject: item.subject },
+                      } as any)
+                    }
+                  >
+                    <SubjectIcon letter={item.subject?.[0] || "?"} />
 
-                  <View>
-                    <Text style={styles.listName}>
-                      {item.subject}
-                    </Text>
+                    <View>
+                      <Text style={styles.listName}>{item.subject}</Text>
 
-                    <Text style={styles.subSubjectName}>
-                      {item.sub_subject}
-                    </Text>
-                  </View>
-                </Pressable>
+                      <Text style={styles.subSubjectName}>
+                        {item.sub_subject}
+                      </Text>
+                    </View>
+                  </Pressable>
+
+                  <Pressable
+                    style={styles.listDeleteButton}
+                    onPress={() => askDeleteModule(item.id)}
+                  >
+                    <Text style={styles.deleteButtonText}>🗑</Text>
+                  </Pressable>
+                </View>
               ))}
             </View>
           )}
         </>
       )}
+
+      <ConfirmModal
+        visible={deleteModalVisible}
+        title="Module verwijderen?"
+        message="Ben je zeker dat je deze module wilt verwijderen? Leerlingen verliezen dan ook toegang tot deze module."
+        cancelText="Annuleren"
+        confirmText="Verwijderen"
+        destructive
+        onCancel={() => {
+          setDeleteModalVisible(false);
+          setModuleToDelete(null);
+        }}
+        onConfirm={() => {
+          if (moduleToDelete) {
+            deleteModule(moduleToDelete);
+          }
+
+          setDeleteModalVisible(false);
+          setModuleToDelete(null);
+        }}
+      />
     </View>
   );
 }
@@ -169,9 +228,7 @@ function SubjectIcon({
 }) {
   return (
     <View style={[styles.subjectIcon, grid && styles.subjectIconGrid]}>
-      <Text style={styles.subjectLetter}>
-        {letter.toUpperCase()}
-      </Text>
+      <Text style={styles.subjectLetter}>{letter.toUpperCase()}</Text>
     </View>
   );
 }
@@ -260,9 +317,14 @@ const styles = StyleSheet.create({
     height: 120,
     backgroundColor: "#fff",
     borderRadius: 12,
+    marginBottom: 24,
+    position: "relative",
+  },
+
+  gridCardContent: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 24,
   },
 
   list: {
@@ -277,6 +339,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 14,
+    justifyContent: "space-between",
+  },
+
+  listContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
   },
 
   subjectIcon: {
@@ -315,5 +384,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#888",
     marginTop: 2,
+  },
+
+  deleteButton: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    zIndex: 10,
+  },
+
+  listDeleteButton: {
+    padding: 8,
+  },
+
+  deleteButtonText: {
+    fontSize: 14,
+    color: "#E56D6D",
   },
 });
